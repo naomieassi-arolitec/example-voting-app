@@ -1,4 +1,4 @@
-name: DevSecOps Pipeline - PetClinic
+name: DevSecOps Pipeline - Example Voting App
 
 on:
   push:
@@ -15,17 +15,19 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+      # Construire les services avec Docker
+      - name: Build Docker Images
+        run: |
+          docker-compose -f docker-compose.yml build
 
-      - name: Run Unit Tests
-        run: mvn test
+      # Tests unitaires / fonctionnels via Docker (si présents)
+      - name: Run Tests
+        run: |
+          docker-compose -f docker-compose.yml run --rm vote pytest
+          docker-compose -f docker-compose.yml run --rm result npm test
 
   # ====================
-  # 2. Analyse statique (SonarQube + Semgrep)
+  # 2. Analyse statique (Semgrep)
   # ====================
   static-analysis:
     runs-on: self-hosted
@@ -33,13 +35,6 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
-      - name: SonarQube Scan
-        run: |
-          docker run --rm \
-            -e SONAR_HOST_URL=${{ secrets.SONAR_HOST_URL }} \
-            -e SONAR_LOGIN=${{ secrets.SONAR_TOKEN }} \
-            -v $(pwd):/usr/src sonarsource/sonar-scanner-cli
 
       - name: Semgrep Scan
         run: |
@@ -52,9 +47,6 @@ jobs:
     runs-on: self-hosted
     needs: static-analysis
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
       - name: Syft SBOM
         run: |
           docker run --rm -v $(pwd):/src anchore/syft:latest dir:/src -o json > sbom.json
@@ -70,20 +62,17 @@ jobs:
     runs-on: self-hosted
     needs: sca-scan
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Build Docker Image
-        run: docker build -t myapp:latest .
+      - name: Build Docker Images
+        run: docker-compose -f docker-compose.yml build
 
       - name: Trivy Image Scan
-        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image myapp:latest
+        run: |
+          docker images -q | xargs -n1 -I {} docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image {}
 
-      - name: Push to Harbor
+      - name: Push Images to Harbor
         run: |
           echo ${{ secrets.HARBOR_PASSWORD }} | docker login ${{ secrets.HARBOR_URL }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin
-          docker tag myapp:latest ${{ secrets.HARBOR_URL }}/devsecops/myapp:latest
-          docker push ${{ secrets.HARBOR_URL }}/devsecops/myapp:latest
+          docker-compose -f docker-compose.yml push
 
   # ====================
   # 5. Déploiement Préprod (VM3)
@@ -92,15 +81,13 @@ jobs:
     runs-on: self-hosted
     needs: package-and-scan
     steps:
-      - name: Pull Image from Harbor
+      - name: Deploy Preprod via Swarm
         run: |
-          docker login ${{ secrets.HARBOR_URL }} -u ${{ secrets.HARBOR_USERNAME }} -p ${{ secrets.HARBOR_PASSWORD }}
-          docker pull ${{ secrets.HARBOR_URL }}/devsecops/myapp:latest
-          docker run -d --rm -p 8081:8080 --name myapp-preprod ${{ secrets.HARBOR_URL }}/devsecops/myapp:latest
+          ssh user@vm3 "docker stack deploy -c /home/user/docker-compose-preprod.yml votingapp-preprod"
 
       - name: OWASP ZAP Scan
         run: |
-          docker run --rm -t owasp/zap2docker-stable zap-baseline.py -t http://localhost:8081
+          docker run --rm -t owasp/zap2docker-stable zap-baseline.py -t http://vm3:8081
 
       - name: Load Testing with K6
         run: |
@@ -125,11 +112,9 @@ jobs:
     runs-on: self-hosted
     needs: manual-approval
     steps:
-      - name: Pull Image from Harbor
+      - name: Deploy Production via Swarm
         run: |
-          docker login ${{ secrets.HARBOR_URL }} -u ${{ secrets.HARBOR_USERNAME }} -p ${{ secrets.HARBOR_PASSWORD }}
-          docker pull ${{ secrets.HARBOR_URL }}/devsecops/myapp:latest
-          docker run -d --rm -p 8080:8080 --name myapp-prod ${{ secrets.HARBOR_URL }}/devsecops/myapp:latest
+          ssh user@vm3 "docker stack deploy -c /home/user/docker-compose-prod.yml votingapp-prod"
 
   # ====================
   # 8. Supervision (Prometheus + Grafana sur VM2)
@@ -140,5 +125,5 @@ jobs:
     steps:
       - name: Verify Monitoring
         run: |
-          curl -s http://vm2:9090/api/v1/status/config  # Vérifier Prometheus
-          curl -s http://vm2:3000/api/health            # Vérifier Grafana
+          curl -s http://vm2:9090/api/v1/status/config  # Prometheus
+          curl -s http://vm2:3000/api/health            # Grafana
