@@ -18,13 +18,13 @@ jobs:
       # Construire les services avec Docker
       - name: Build Docker Images
         run: |
-          docker-compose -f docker-compose.yml build
+          docker compose -f docker-compose.yml build
 
       # Tests unitaires / fonctionnels via Docker (si présents)
       - name: Run Tests
         run: |
-          docker-compose -f docker-compose.yml run --rm vote pytest
-          docker-compose -f docker-compose.yml run --rm result npm test
+          docker compose -f docker-compose.yml run --rm vote pytest
+          docker compose -f docker-compose.yml run --rm result npm test
 
   # ====================
   # 2. Analyse statique (Semgrep)
@@ -63,7 +63,7 @@ jobs:
     needs: sca-scan
     steps:
       - name: Build Docker Images
-        run: docker-compose -f docker-compose.yml build
+        run: docker compose -f docker-compose.yml build
 
       - name: Trivy Image Scan
         run: |
@@ -72,7 +72,7 @@ jobs:
       - name: Push Images to Harbor
         run: |
           echo ${{ secrets.HARBOR_PASSWORD }} | docker login ${{ secrets.HARBOR_URL }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin
-          docker-compose -f docker-compose.yml push
+          docker compose -f docker-compose.yml push
 
   # ====================
   # 5. Déploiement Préprod (VM3)
