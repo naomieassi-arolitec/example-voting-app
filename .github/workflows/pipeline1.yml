@@ -117,7 +117,7 @@ jobs:
           ssh user@vm3 "docker stack deploy -c /home/user/docker-compose-prod.yml votingapp-prod"
 
   # ====================
-  # 8. Supervision (Prometheus + Grafana sur VM2)
+  # 8. Supervision (Prometheus + Grafana sur la VM2)
   # ====================
   monitoring:
     runs-on: self-hosted
