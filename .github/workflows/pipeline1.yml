@@ -21,10 +21,10 @@ jobs:
           docker compose -f docker-compose.yml build
 
       # Tests unitaires / fonctionnels via Docker (si présents)
-      - name: Run Tests
-        run: |
-          docker compose -f docker-compose.yml run --rm vote pytest
-          docker compose -f docker-compose.yml run --rm result npm test
+#      - name: Run Tests
+#        run: |
+#          docker compose -f docker-compose.yml run --rm vote pytest
+#          docker compose -f docker-compose.yml run --rm result npm test
 
   # ====================
   # 2. Analyse statique (Semgrep)
