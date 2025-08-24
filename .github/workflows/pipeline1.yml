@@ -7,94 +7,71 @@ on:
 
 jobs:
   # ====================
-  # 1. Build & Tests (VM1 - Runner CI)
+  # 1. Build & Tests (VM1 - Runner)
   # ====================
   build-test:
     runs-on: self-hosted
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      # Construire les services avec Docker
+      - uses: actions/checkout@v4
       - name: Build Docker Images
-        run: |
-          docker compose -f docker-compose.yml build
-
-      # Tests unitaires / fonctionnels via Docker (si présents)
-#      - name: Run Tests
-#        run: |
-#          docker compose -f docker-compose.yml run --rm vote pytest
-#          docker compose -f docker-compose.yml run --rm result npm test
+        run: docker compose -f docker-compose.yml build
 
   # ====================
-  # 2. Analyse statique (Semgrep)
+  # 2. Analyse statique (SonarQube SAST)
   # ====================
-  static-analysis:
+  sonar-analysis:
     runs-on: self-hosted
     needs: build-test
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Semgrep Scan
+      - uses: actions/checkout@v4
+      - name: SonarQube Scan
         run: |
-          docker run --rm -v $(pwd):/src returntocorp/semgrep semgrep --config=auto /src
+          docker run --rm \
+            -e SONAR_HOST_URL=${{ secrets.SONAR_HOST_URL }} \
+            -e SONAR_LOGIN=${{ secrets.SONAR_TOKEN }} \
+            -v $(pwd):/usr/src \
+            sonarsource/sonar-scanner-cli \
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
+            -Dsonar.sources=. \
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
   # ====================
-  # 3. Analyse de composition logicielle (SCA - Trivy, Syft)
-  # ====================
-  sca-scan:
-    runs-on: self-hosted
-    needs: static-analysis
-    steps:
-      - name: Syft SBOM
-        run: |
-          docker run --rm -v $(pwd):/src anchore/syft:latest dir:/src -o json > sbom.json
-
-      - name: Trivy FS Scan
-        run: |
-          docker run --rm -v $(pwd):/src aquasec/trivy fs /src
-
-  # ====================
-  # 4. Packaging & Scan image
+  # 3. Packaging & Scan image
   # ====================
   package-and-scan:
     runs-on: self-hosted
-    needs: sca-scan
+    needs: sonar-analysis
     steps:
       - name: Build Docker Images
         run: docker compose -f docker-compose.yml build
 
       - name: Trivy Image Scan
         run: |
-          docker images -q | xargs -n1 -I {} docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image {}
+          docker images -q | xargs -n1 -I {} docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy image {}
 
-      - name: Push Images to Harbor
+      - name: Push Images to DockerHub
         run: |
-          echo ${{ secrets.HARBOR_PASSWORD }} | docker login ${{ secrets.HARBOR_URL }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin
+          echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
           docker compose -f docker-compose.yml push
 
   # ====================
-  # 5. Déploiement Préprod (VM3)
+  # 4. Déploiement Préprod (VM2)
   # ====================
   deploy-preprod:
     runs-on: self-hosted
     needs: package-and-scan
     steps:
       - name: Deploy Preprod via Swarm
-        run: |
-          ssh user@vm3 "docker stack deploy -c /home/user/docker-compose-preprod.yml votingapp-preprod"
+        run: ssh user@vm2 "docker stack deploy -c /home/user/docker-compose-preprod.yml votingapp-preprod"
 
       - name: OWASP ZAP Scan
-        run: |
-          docker run --rm -t owasp/zap2docker-stable zap-baseline.py -t http://vm3:8081
-
-      - name: Load Testing with K6
-        run: |
-          docker run --rm -i loadimpact/k6 run - <tests/load-test.js
+        run: docker run --rm -t owasp/zap2docker-stable zap-baseline.py -t http://vm2:8081
 
   # ====================
-  # 6. Validation manuelle
+  # 5. Validation manuelle
   # ====================
   manual-approval:
     runs-on: self-hosted
@@ -106,24 +83,23 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   # ====================
-  # 7. Déploiement Production (VM4)
+  # 6. Déploiement Production (VM3)
   # ====================
   deploy-prod:
     runs-on: self-hosted
     needs: manual-approval
     steps:
       - name: Deploy Production via Swarm
-        run: |
-          ssh user@vm3 "docker stack deploy -c /home/user/docker-compose-prod.yml votingapp-prod"
+        run: ssh user@vm3 "docker stack deploy -c /home/user/docker-compose-prod.yml votingapp-prod"
 
   # ====================
-  # 8. Supervision (Prometheus + Grafana sur la VM2)
+  # 7. Supervision Monitoring (VM1)
   # ====================
   monitoring:
     runs-on: self-hosted
     needs: deploy-prod
     steps:
-      - name: Verify Monitoring
-        run: |
-          curl -s http://vm2:9090/api/v1/status/config  # Prometheus
-          curl -s http://vm2:3000/api/health            # Grafana
+      - name: Verify Prometheus
+        run: curl -s http://localhost:9090/api/v1/status/config
+      - name: Verify Grafana
+        run: curl -s http://localhost:3000/api/health
