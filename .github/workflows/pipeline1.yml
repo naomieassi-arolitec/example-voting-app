@@ -37,7 +37,7 @@ jobs:
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
   # ====================
-  # 3. Packaging & Scan image
+  # 3. Packaging & Scan the image
   # ====================
   package-and-scan:
     runs-on: self-hosted
