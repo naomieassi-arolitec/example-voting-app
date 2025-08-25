@@ -58,7 +58,7 @@ jobs:
         run: |
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
           IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/app:${{ github.sha }}"
-          docker build -t "$IMAGE" .
+          docker build -t "$IMAGE" ./vote
           docker push "$IMAGE"
 
       - name: Scan Dockerfile & Image - Trivy
