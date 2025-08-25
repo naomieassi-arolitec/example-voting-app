@@ -57,14 +57,14 @@ jobs:
       - name: Build Docker image
         run: |
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
-          IMAGE="${{ secrets.DOCKERHUB_ORG }}/app:${{ github.sha }}"
+          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/app:${{ github.sha }}"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
 
       - name: Scan Dockerfile & Image - Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "${{ secrets.DOCKERHUB_ORG }}/app:${{ github.sha }}"
+          image-ref: "${{ secrets.DOCKERHUB_USERNAME }}/app:${{ github.sha }}"
           severity: HIGH,CRITICAL
   
   # ====================
