@@ -73,7 +73,7 @@ jobs:
   # ====================
   deploy-preprod:
     runs-on: self-hosted
-    needs: [sonar-analysis, package-and-scan]
+    needs: [sonar-analysis, package-and-scan, sca-scan]
     steps:
       - name: Deploy Preprod via Swarm
         run: ssh rocky@192.168.1.66 "docker stack deploy -c /home/user/docker-compose-preprod.yml votingapp-preprod"
