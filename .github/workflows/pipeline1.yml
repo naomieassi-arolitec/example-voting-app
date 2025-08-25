@@ -46,19 +46,11 @@ jobs:
       - name: Build Docker Images
         run: docker compose -f docker-compose.yml build
 
-      - name: Trivy Image Scan
-        run: |
-          docker pull aquasec/trivy:latest
-          for img in $(docker images --format "{{.Repository}}:{{.Tag}}" | grep -v "<none>"); do
-            echo "🔍 Scanning $img ..."
-            docker run --rm \
-              -v $HOME/.cache/trivy:/root/.cache/ \
-              aquasec/trivy image \
-              --exit-code 0 \
-              --ignore-unfixed \
-              --severity HIGH,CRITICAL \
-              $img
-          done
+      - name: Trivy Image Scan 
+        run: | 
+         docker images -q | xargs -n1 -I {} docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          aquasec/trivy image {}
           
       - name: Push Images to DockerHub
         run: |
