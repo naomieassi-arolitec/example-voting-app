@@ -52,66 +52,40 @@ jobs:
   # ====================
   package-and-scan:
     runs-on: self-hosted
-    needs: [sonar-analysis, sca-scan] 
+    needs: [sonar-analysis, sca-scan]
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+  
       - name: Build Docker Images
         run: docker compose -f docker-compose.yml build
   
-      - name: Push Images to DockerHub
+      - name: DockerHub Login
         run: |
           echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
-          docker compose -f docker-compose.yml push
   
-      # 🔍 Scan des images après push avec l’action officielle
-      - name: Scan worker
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/example-voting-app-worker:latest
-          format: table
-          exit-code: 0
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: HIGH,CRITICAL
+      - name: Tag Docker Images
+        run: |
+          for img in vote result worker redis db; do
+            docker tag $img ${{ secrets.DOCKERHUB_USERNAME }}/example-voting-app-$img:latest
+          done
   
-      - name: Scan result
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/example-voting-app-result:latest
-          format: table
-          exit-code: 0
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: HIGH,CRITICAL
+      - name: Push Docker Images
+        run: |
+          for img in vote result worker redis db; do
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/example-voting-app-$img:latest
+          done
   
-      - name: Scan vote
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/example-voting-app-vote:latest
-          format: table
-          exit-code: 0
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: HIGH,CRITICAL
-  
-      - name: Scan db
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/example-voting-app-db:latest
-          format: table
-          exit-code: 0
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: HIGH,CRITICAL
-  
-      - name: Scan redis
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/example-voting-app-redis:latest
-          format: table
-          exit-code: 0
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: HIGH,CRITICAL
+      - name: Trivy Remote Scan
+        run: |
+          for img in vote result worker redis db; do
+            echo "🔍 Scanning ${{ secrets.DOCKERHUB_USERNAME }}/example-voting-app-$img:latest ..."
+            trivy image \
+              --exit-code 0 \
+              --ignore-unfixed \
+              --severity HIGH,CRITICAL \
+              ${{ secrets.DOCKERHUB_USERNAME }}/example-voting-app-$img:latest
+          done
 
   # ====================
   # 4. Déploiement Préprod (VM2)
