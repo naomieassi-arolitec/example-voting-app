@@ -74,7 +74,12 @@ jobs:
     runs-on: self-hosted
     needs: package-and-scan
     steps:
-      - name: Deploy Preprod via Swarm
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PREPROD_KEY }}
+      
+      - name: Deploy Docker Stack
         run: ssh rocky@192.168.1.66 "docker stack deploy -c /home/user/docker-compose-preprod.yml votingapp-preprod"
 
       - name: OWASP ZAP Scan
@@ -99,8 +104,13 @@ jobs:
     runs-on: self-hosted
     needs: manual-approval
     steps:
-      - name: Deploy Production via Swarm
-        run: ssh rocky@192.168.1.67 "docker stack deploy -c /home/user/docker-compose-prod.yml votingapp-prod"
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PROD_KEY }}
+      
+      - name: Deploy Docker Stack
+        run: ssh rocky@192.168.1.67 "docker stack deploy -c /home/user/docker-compose-preprod.yml votingapp-prod"
 
   # ====================
   # 7. Supervision Monitoring (VM1)
