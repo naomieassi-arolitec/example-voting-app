@@ -56,13 +56,23 @@ jobs:
     steps:
       - name: Build Docker Images
         run: docker compose -f docker-compose.yml build
-
-      - name: Trivy Image Scan 
-        run: | 
-         docker images -q | xargs -n1 -I {} docker run --rm \
-          -v /var/run/docker.sock:/var/run/docker.sock \
-          aquasec/trivy image {}
-          
+  
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+          sudo mv trivy /usr/local/bin/
+  
+      - name: Trivy Image Scan
+        run: |
+          for img in $(docker images --format "{{.Repository}}:{{.Tag}}" | grep 'example-voting-app'); do
+            echo "🔍 Scanning $img ..."
+            trivy image \
+              --exit-code 0 \
+              --ignore-unfixed \
+              --severity HIGH,CRITICAL \
+              $img
+          done
+  
       - name: Push Images to DockerHub
         run: |
           echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
