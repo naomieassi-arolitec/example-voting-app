@@ -37,11 +37,22 @@ jobs:
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
   # ====================
+  # 3. Analyse de composition logicielle (SCA - Trivy, Syft)
+  # ====================
+  sca-scan:
+    runs-on: self-hosted
+    needs: build-test
+    steps:
+      - name: Trivy FS Scan
+        run: |
+          docker run --rm -v $(pwd):/src aquasec/trivy fs /src
+
+  # ====================
   # 3. Packaging & Scan image
   # ====================
   package-and-scan:
     runs-on: self-hosted
-    needs: sonar-analysis
+    needs: build-test
     steps:
       - name: Build Docker Images
         run: docker compose -f docker-compose.yml build
@@ -62,10 +73,10 @@ jobs:
   # ====================
   deploy-preprod:
     runs-on: self-hosted
-    needs: package-and-scan
+    needs: [sonar-analysis, package-and-scan]
     steps:
       - name: Deploy Preprod via Swarm
-        run: ssh user@vm2 "docker stack deploy -c /home/user/docker-compose-preprod.yml votingapp-preprod"
+        run: ssh rocky@192.168.1.66 "docker stack deploy -c /home/user/docker-compose-preprod.yml votingapp-preprod"
 
       - name: OWASP ZAP Scan
         run: docker run --rm -t owasp/zap2docker-stable zap-baseline.py -t http://vm2:8081
@@ -90,7 +101,7 @@ jobs:
     needs: manual-approval
     steps:
       - name: Deploy Production via Swarm
-        run: ssh user@vm3 "docker stack deploy -c /home/user/docker-compose-prod.yml votingapp-prod"
+        run: ssh rocky@192.168.1.67 "docker stack deploy -c /home/user/docker-compose-prod.yml votingapp-prod"
 
   # ====================
   # 7. Supervision Monitoring (VM1)
