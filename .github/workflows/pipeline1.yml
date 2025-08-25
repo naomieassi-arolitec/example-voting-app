@@ -56,7 +56,7 @@ jobs:
     steps:
       - name: Build Docker image
         run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
           IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/app:${{ github.sha }}"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
