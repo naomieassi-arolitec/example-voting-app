@@ -52,38 +52,33 @@ jobs:
   # ====================
   package-and-scan:
     runs-on: self-hosted
-    needs: build-test
+    needs: [sonar-analysis, sca-scan] 
     steps:
       - name: Build Docker Images
         run: docker compose -f docker-compose.yml build
-  
-      - name: Install Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-          sudo mv trivy /usr/local/bin/
-  
-      - name: Trivy Image Scan
-        run: |
-          for img in $(docker images --format "{{.Repository}}:{{.Tag}}" | grep 'example-voting-app'); do
-            echo "🔍 Scanning $img ..."
-            trivy image \
-              --exit-code 0 \
-              --ignore-unfixed \
-              --severity HIGH,CRITICAL \
-              $img
-          done
   
       - name: Push Images to DockerHub
         run: |
           echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
           docker compose -f docker-compose.yml push
+  
+      - name: Trivy Remote Scan
+        run: |
+          for img in $(docker images --format "{{.Repository}}:{{.Tag}}" | grep 'example-voting-app'); do
+            echo "🔍 Scanning on DockerHub $img ..."
+            trivy image \
+              --exit-code 0 \
+              --ignore-unfixed \
+              --severity HIGH,CRITICAL \
+              ${{ secrets.DOCKERHUB_USERNAME }}/$img
+          done
 
   # ====================
   # 4. Déploiement Préprod (VM2)
   # ====================
   deploy-preprod:
     runs-on: self-hosted
-    needs: [sonar-analysis, package-and-scan, sca-scan]
+    needs: package-and-scan
     steps:
       - name: Deploy Preprod via Swarm
         run: ssh rocky@192.168.1.66 "docker stack deploy -c /home/user/docker-compose-preprod.yml votingapp-preprod"
