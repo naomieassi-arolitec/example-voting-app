@@ -105,28 +105,7 @@ jobs:
             trivy-worker.json
             trivy-redis.json
             trivy-db.json
-  
-       - name: Install Trivy CLI
-         uses: aquasecurity/setup-trivy@v0.2.3
-          
-        - name: Trivy image scan
-          run: |
-            IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}//example-voting-app-$img:latest
-            IMAGE_TAG=${{ github.sha }}
-            trivy image --severity HIGH,CRITICAL $IMAGE_NAME:$IMAGE_TAG
-            
-        - name: Trivy image scan (JSON)
-          run: |
-            IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/example-voting-app-$img:latest
-            IMAGE_TAG=${{ github.sha }}
-            trivy image --severity HIGH,CRITICAL \
-              --format json --output trivy-image.json $IMAGE_NAME:$IMAGE_TAG
-              
-        - name: Upload image scan report
-          uses: actions/upload-artifact@v4
-          with:
-            name: trivy-image
-            path: trivy-image.json
+
   
   # ====================
   # 4. Déploiement Préprod (VM2)
