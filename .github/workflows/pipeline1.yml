@@ -78,9 +78,16 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PREPROD_KEY }}
-      
-      - name: Deploy Docker Stack
-        run: ssh rocky@192.168.1.66 "docker stack deploy -c /home/rocky/docker-compose-preprod.yml votingapp-preprod"
+
+      - name: Deploy on Preprod
+        run: |
+          ssh rocky@192.168.1.66 "
+            docker pull memecpux/app:${GITHUB_SHA}
+            docker stop app || true && docker rm app || true
+            docker run -d --name app -p 8080:80 memecpux/app:${GITHUB_SHA}"
+            
+   #   - name: Deploy Docker Stack
+   #     run: ssh rocky@192.168.1.66 "docker stack deploy -c /home/rocky/docker-compose-preprod.yml votingapp-preprod"
 
       - name: OWASP ZAP Scan
         run: docker run --rm -t owasp/zap2docker-stable zap-baseline.py -t http://192.168.1.66:8081
