@@ -89,6 +89,12 @@ jobs:
    #   - name: Deploy Docker Stack
    #     run: ssh rocky@192.168.1.66 "docker stack deploy -c /home/rocky/docker-compose-preprod.yml votingapp-preprod"
 
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: OWASP ZAP Scan
         run: docker run --rm -t owasp/zap2docker-stable zap-baseline.py -t http://192.168.1.66:8081
 
