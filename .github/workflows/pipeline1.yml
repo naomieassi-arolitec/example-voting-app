@@ -68,7 +68,7 @@ jobs:
           severity: HIGH,CRITICAL
   
   # ====================
-  # 4. Déploiement Préprod (VM2)
+  # 4. Déploiement Preprod (VM2)
   # ====================
   deploy-preprod:
     runs-on: self-hosted
