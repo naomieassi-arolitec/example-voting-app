@@ -80,7 +80,7 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PREPROD_KEY }}
       
       - name: Deploy Docker Stack
-        run: ssh rocky@192.168.1.66 "docker stack deploy -c /home/user/docker-compose-preprod.yml votingapp-preprod"
+        run: ssh rocky@192.168.1.66 "docker stack deploy -c /home/rocky/docker-compose-preprod.yml votingapp-preprod"
 
       - name: OWASP ZAP Scan
         run: docker run --rm -t owasp/zap2docker-stable zap-baseline.py -t http://192.168.1.66:8081
@@ -110,7 +110,7 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PROD_KEY }}
       
       - name: Deploy Docker Stack
-        run: ssh rocky@192.168.1.67 "docker stack deploy -c /home/user/docker-compose-preprod.yml votingapp-prod"
+        run: ssh rocky@192.168.1.67 "docker stack deploy -c /home/rocky/docker-compose-preprod.yml votingapp-prod"
 
   # ====================
   # 7. Supervision Monitoring (VM1)
