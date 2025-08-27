@@ -96,7 +96,8 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: OWASP ZAP Scan
-        run: docker run --rm -t zaproxy/zap-stable zap-baseline.py -t http://192.168.1.66:8080
+        run: docker run --rm -t zaproxy/zap-stable zap-baseline.py -t http://192.168.1.66:8081 -J report.json -I
+
 
   # ====================
   # 5. Validation manuelle
