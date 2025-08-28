@@ -45,7 +45,7 @@ jobs:
     steps:
       - name: Clean Trivy cache
         run: |
-          rm -rf ~/.cache/trivy
+          sudo rm -rf ~/.cache/trivy
       - name: Trivy FS Scan
         run: |
           docker run --rm -v $(pwd):/src aquasec/trivy fs /src
