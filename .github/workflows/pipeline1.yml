@@ -43,6 +43,9 @@ jobs:
     runs-on: self-hosted
     needs: build-test
     steps:
+      - name: Clean Trivy cache
+        run: |
+          rm -rf ~/.cache/trivy
       - name: Trivy FS Scan
         run: |
           docker run --rm -v $(pwd):/src aquasec/trivy fs /src
