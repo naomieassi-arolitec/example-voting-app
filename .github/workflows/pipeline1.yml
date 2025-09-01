@@ -109,23 +109,23 @@ jobs:
   # ====================
   # 5. Validation manuelle
   # ====================
-  manual-approval:
-    runs-on: self-hosted
-    needs: deploy-preprod
-    steps:
-      - name: Wait for manual approval
-        uses: hmarr/auto-approve-action@v3
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
-          review-message: "Validation manuelle !?"
+  # manual-approval:
+  #   runs-on: self-hosted
+  #   needs: deploy-preprod
+  #   steps:
+  #     - name: Wait for manual approval
+  #       uses: hmarr/auto-approve-action@v3
+  #       with:
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+  #         pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+  #         review-message: "Validation manuelle !?"
 
   # ====================
   # 6. Déploiement Production (VM3)
   # ====================
   deploy-prod:
     runs-on: self-hosted
-    needs: manual-approval
+    # needs: manual-approval
     steps:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -133,7 +133,10 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PROD_KEY }}
       
       - name: Deploy Docker Stack
-        run: ssh rocky@192.168.1.67 "docker stack deploy -c /home/rocky/docker-compose-preprod.yml votingapp-prod"
+        run: |
+          ssh rocky@192.168.1.67 "
+            docker pull memecpux/app:${GITHUB_SHA}
+            docker stack deploy -c /home/rocky/docker-compose-preprod.yml votingapp"
 
   # ====================
   # 7. Supervision Monitoring (VM1)
@@ -143,6 +146,6 @@ jobs:
     needs: deploy-prod
     steps:
       - name: Verify Prometheus
-        run: curl -s http://localhost:9090/api/v1/status/config
+        run: curl -s http://192.168.1.65:9090/api/v1/status/config
       - name: Verify Grafana
-        run: curl -s http://localhost:3000/api/health
+        run: curl -s http://192.168.1.65:3000/api/health
