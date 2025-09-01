@@ -117,6 +117,8 @@ jobs:
         uses: hmarr/auto-approve-action@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+          review-message: "Validation manuelle !?"
 
   # ====================
   # 6. Déploiement Production (VM3)
