@@ -136,7 +136,7 @@ jobs:
         run: |
           ssh rocky@192.168.1.67 "
             cd /opt
-            git clone http://github.com/naomieassi-arolitec/example-voting-app.git
+            git clone https://github.com/naomieassi-arolitec/example-voting-app.git
             git pull origin main
             docker stack deploy -c /home/rocky/docker-compose.yml votingapp"
 
