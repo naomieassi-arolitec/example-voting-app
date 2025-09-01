@@ -136,7 +136,7 @@ jobs:
         run: |
           ssh rocky@192.168.1.67 "
             cd /opt
-            docker pull memecpux/app:${GITHUB_SHA}
+            docker pull memecpux/app:1f85ff4149e0aadd4f01e8715a374be3120d8808
             docker stack deploy -c /home/rocky/docker-compose-preprod.yml votingapp"
 
   # ====================
