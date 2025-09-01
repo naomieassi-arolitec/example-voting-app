@@ -135,6 +135,7 @@ jobs:
       - name: Deploy Docker Stack
         run: |
           ssh rocky@192.168.1.67 "
+            cd /opt
             docker pull memecpux/app:${GITHUB_SHA}
             docker stack deploy -c /home/rocky/docker-compose-preprod.yml votingapp"
 
